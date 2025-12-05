@@ -1,0 +1,55 @@
+# 用于测试精准分库分表
+server:
+  port: 8080
+
+spring:
+  application:
+    name: test-shardingJDBC
+
+  main:
+    allow-bean-definition-overriding: true
+
+  shardingsphere:
+    props:
+      sql.show: true
+
+    datasource:
+      names: ds0, ds1
+      # 物理库 1
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driverClassName: com.mysql.cj.jdbc.Driver
+        jdbcUrl: "jdbc:mysql://115.159.195.151:13306/sharding_order_0"
+        username: root
+        password: MySql123++
+      # 物理库 2
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driverClassName: com.mysql.cj.jdbc.Driver
+        jdbcUrl: "jdbc:mysql://115.159.195.151:13306/sharding_order_1"
+        username: root
+        password: MySql123++
+
+
+    # 在业务代码使用时 只需要使用逻辑表名
+    sharding:
+      # 表的配置
+      tables:
+        product_order:
+          actual-data-nodes: ds$->{0..1}.product_order_$->{0..1} # 如果未配置真实的物理库 会默认选择所有的物理库
+          key-generator:
+            props:   # 配置workId
+              worker:
+                id: 1
+            column: id
+            type: SNOWFLAKE
+          database-strategy: # 自定义精准分库策略
+            standard:
+              sharding-column: user_id
+              precise-algorithm-class-name: com.yym.sharding.strategy.CustomTablePreciseShardingAlgorithm
+          table-strategy: # 自定义精准分表策略
+            standard:
+              sharding-column: id
+              precise-algorithm-class-name: com.yym.sharding.strategy.CustomDBPreciseShardingAlgorithm
+
+

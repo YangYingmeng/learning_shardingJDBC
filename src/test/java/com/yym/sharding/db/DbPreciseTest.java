@@ -12,12 +12,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.yym.sharding.TestApplication;
-import com.yym.sharding.mapper.AdConfigMapper;
-import com.yym.sharding.mapper.ProductOrderItemMapper;
 import com.yym.sharding.mapper.ProductOrderMapper;
-import com.yym.sharding.model.AdConfigDO;
 import com.yym.sharding.model.ProductOrderDO;
-import com.yym.sharding.model.ProductOrderItemDO;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,20 +21,17 @@ import lombok.extern.slf4j.Slf4j;
  * @Author: Yym
  * @Version: 1.0
  * @Date: 2025-12-02 14:54
+ * <p>
+ * 精准策略 分库分表
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = TestApplication.class)
-@TestPropertySource(locations = "classpath:application.yml")
+@TestPropertySource(locations = "classpath:application-precise.yml")
 @Slf4j
-public class DbTest {
+public class DbPreciseTest {
 
     @Autowired
     private ProductOrderMapper productOrderMapper;
-    @Autowired
-    private ProductOrderItemMapper productOrderItemMapper;
-
-    @Autowired
-    private AdConfigMapper adConfigMapper;
 
     // ============================  新增 ============================
 
@@ -46,7 +39,7 @@ public class DbTest {
      * 插入 订单 + 订单项（绑定表）
      */
     @Test
-    public void testSaveProductOrderAndItem() {
+    public void testSaveProductOrder() {
 
         Random random = new Random();
 
@@ -56,7 +49,7 @@ public class DbTest {
 
             ProductOrderDO order = new ProductOrderDO();
             order.setCreateTime(new Date());
-            order.setNickname("自定义水平分库分表 i=" + i);
+            order.setNickname("精准策略 分库分表 i=" + i);
             order.setOutTradeNo(UUID.randomUUID().toString().replace("-", ""));
             order.setPayAmount(100.00);
             order.setState("PAY");
@@ -69,35 +62,7 @@ public class DbTest {
             Long orderId = order.getId();
             System.out.println("生成订单ID = " + orderId + "，用户ID = " + userId);
 
-            // 2️⃣ 再插入订单项（绑定表）
-            for (int j = 0; j < 3; j++) {
-                ProductOrderItemDO item = new ProductOrderItemDO();
-                item.setProductOrderId(orderId);     // 关键：绑定用这个字段分片
-                item.setProductId(1000L + j);
-                item.setProductName("测试商品-" + j);
-                item.setBuyNum(1 + j);
-                item.setUserId(userId);              // 必须和订单 userId 一致（用于分库）
 
-                productOrderItemMapper.insert(item);
-            }
-        }
-    }
-
-    /**
-     * 插入广播表 ad_config
-     */
-    @Test
-    public void testSaveAdConfig() {
-
-        for (int i = 0; i < 5; i++) {
-            AdConfigDO config = new AdConfigDO();
-            config.setConfigKey("config_key_" + i);
-            config.setConfigValue("config_value_" + i);
-            config.setType("SYSTEM");
-
-            adConfigMapper.insert(config);
-
-            System.out.println("生成 ad_config ID = " + config.getId());
         }
     }
 
@@ -106,29 +71,11 @@ public class DbTest {
 
 
     /**
-     * 查询广播表 ad_config
-     */
-    @Test
-    public void testListAdConfig() {
-
-        System.out.println(adConfigMapper.listAdConfig());
-    }
-
-    /**
      * 查询绑定表单张 product_order
      */
     @Test
     public void testListProductOrder() {
 
         System.out.println(productOrderMapper.listProductOrder());
-    }
-
-    /**
-     * 查询绑定表 product_order product_order_item
-     */
-    @Test
-    public void testListProductOrderDetail() {
-
-        System.out.println(productOrderMapper.listProductOrderDetail());
     }
 }
