@@ -1,0 +1,73 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: test-shardingJDBC
+
+  main:
+    allow-bean-definition-overriding: true
+
+  shardingsphere:
+    props:
+      sql.show: true
+
+    datasource:
+      names: ds0, ds1
+      # 物理库 1
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driverClassName: com.mysql.cj.jdbc.Driver
+        jdbcUrl: "jdbc:mysql://115.159.195.151:13306/sharding_order_0"
+        username: root
+        password: MySql123++
+      # 物理库 2
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driverClassName: com.mysql.cj.jdbc.Driver
+        jdbcUrl: "jdbc:mysql://115.159.195.151:13306/sharding_order_1"
+        username: root
+        password: MySql123++
+
+
+    # 在业务代码使用时 只需要使用逻辑表名
+    sharding:
+      # 未指定分库策略, 则按照默认策略进行分库, ds0/1 用户id%2
+      default-database-strategy:
+        inline:
+          sharding-column: user_id
+          algorithm-expression: ds$->{user_id % 2}
+      # 表的配置
+      tables:
+        # 表名
+        product_order_item:
+          # 分表策略
+          table-strategy:
+            inline:
+              sharding-column: product_order_id
+              algorithm-expression: product_order_item_$->{product_order_id % 2}
+          # 分库分表策略本质上只是算名的函数, 此处才是声明物理数据库的范围,在该范围内使用对应的分库分表策略
+          actual-data-nodes: ds$->{0..1}.product_order_item_$->{0..1}
+        product_order:
+          table-strategy:
+            inline:
+              sharding-column: id    # 分表策略 按照用户id取模
+              algorithm-expression: product_order_$->{id % 2}
+          actual-data-nodes: ds$->{0..1}.product_order_$->{0..1}
+          key-generator:  # 自定义主键生成策略
+            column: id
+            type: SNOWFLAKE
+            props:
+              worker:
+                id: 1
+
+        ad_config:
+          key-generator:
+            type: SNOWFLAKE
+            column: id
+      # 广播表
+      broadcast-tables: ad_config
+      # 绑定表
+      binding-tables:
+        - product_order, product_order_item
+
